@@ -1,0 +1,186 @@
+name: CI/CD - Build then Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main # Deploy only when changes are pushed to `main`
+
+jobs:
+  build:
+    name: Build Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          token: ${{ secrets.ACCESS_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Validate Docker Compose file
+        run: |
+          docker compose config --quiet || exit 1
+
+      # Optional: Build Docker image to validate (but we'll build on VPS during deploy)
+      # - name: Build Docker image
+      #   run: |
+      #     docker compose build
+
+  deploy:
+    name: Deploy project with Docker Compose
+    needs: build
+    permissions:
+      deployments: write
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          token: ${{ secrets.ACCESS_TOKEN }}
+
+      - name: Create GitHub deployment
+        uses: chrnorm/deployment-action@v2
+        id: deployment
+        with:
+          token: "${{ secrets.ACCESS_TOKEN }}"
+          environment-url: ${{ vars.APP_URL }}
+          environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_IP }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            set -e  # Exit on any error
+
+            # Update project directory path as needed
+            PROJECT_DIR="/home/workspace/my-projects/nithub-chatbot"
+            cd "$PROJECT_DIR" || { echo "Error: Project directory not found: $PROJECT_DIR"; exit 1; }
+
+            echo "=== Starting deployment ==="
+
+            # Pull latest code
+            echo "Pulling latest code..."
+            git fetch origin main || exit 1
+            git reset --hard origin/main || exit 1
+
+            # Verify required files exist
+            if [ ! -f docker-compose.yml ]; then
+              echo "Error: docker-compose.yml not found!"
+              exit 1
+            fi
+
+            if [ ! -f Dockerfile ]; then
+              echo "Error: Dockerfile not found!"
+              exit 1
+            fi
+
+            # Ensure .env file exists (create placeholder if needed, or use secrets)
+            if [ ! -f .env ]; then
+              echo "Warning: .env file not found. Services may fail without environment variables."
+              echo "Ensure .env is present or configure environment variables in docker-compose.yml"
+            fi
+
+            # Stop existing containers gracefully (preserves volumes)
+            echo "Stopping existing containers..."
+            docker compose down --timeout 30 || true
+
+            # Remove old API image to force rebuild (keeps postgres image)
+            echo "Cleaning up old API images..."
+            docker image rm nithub-chatbot-api:latest 2>/dev/null || true
+
+            # Build new API image
+            echo "Building new API image..."
+            docker compose build --no-cache api || { echo "Error: Build failed"; exit 1; }
+
+            # Start services (migrations run automatically on startup via main.py)
+            echo "Starting services..."
+            docker compose up -d || { echo "Error: Failed to start services"; exit 1; }
+
+            # Wait for postgres to be healthy
+            echo "Waiting for PostgreSQL to be healthy..."
+            MAX_WAIT=60
+            WAIT_COUNT=0
+            while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
+              if docker compose ps postgres | grep -q "healthy"; then
+                echo "PostgreSQL is healthy!"
+                break
+              fi
+              sleep 2
+              WAIT_COUNT=$((WAIT_COUNT + 2))
+            done
+
+            if [ $WAIT_COUNT -ge $MAX_WAIT ]; then
+              echo "Warning: PostgreSQL did not become healthy within $MAX_WAIT seconds"
+            fi
+
+            # Wait for API to be ready
+            echo "Waiting for API to be ready..."
+            MAX_WAIT=90
+            WAIT_COUNT=0
+            API_READY=false
+
+            while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
+              if curl -sf http://localhost:8080/ > /dev/null 2>&1; then
+                echo "API is responding!"
+                API_READY=true
+                break
+              fi
+              echo "Waiting for API... ($WAIT_COUNT/$MAX_WAIT seconds)"
+              sleep 3
+              WAIT_COUNT=$((WAIT_COUNT + 3))
+            done
+
+            if [ "$API_READY" = false ]; then
+              echo "Error: API did not become ready within $MAX_WAIT seconds"
+              echo "Container logs:"
+              docker compose logs api --tail 50
+              exit 1
+            fi
+
+            # Check container status
+            echo "=== Container Status ==="
+            docker compose ps
+
+            # Verify API health endpoint
+            echo "=== Verifying API Health ==="
+            API_RESPONSE=$(curl -sf http://localhost:8080/ || echo "FAILED")
+            if [ "$API_RESPONSE" != "FAILED" ]; then
+              echo "API health check passed!"
+            else
+              echo "Warning: API health check returned non-200 status"
+            fi
+
+            # Clean up unused Docker images (optional - saves disk space)
+            echo "=== Cleaning up unused images ==="
+            docker image prune -f --filter "dangling=true" || true
+
+            echo "=== Deployment completed successfully ==="
+
+      - name: Update deployment status (success)
+        if: success()
+        uses: chrnorm/deployment-status@v2
+        with:
+          token: "${{ github.token }}"
+          environment-url: ${{ vars.APP_URL }}
+          state: "success"
+          deployment-id: ${{ steps.deployment.outputs.deployment_id }}
+
+      - name: Update deployment status (failure)
+        if: failure()
+        uses: chrnorm/deployment-status@v2
+        with:
+          token: "${{ github.token }}"
+          environment-url: ${{ vars.APP_URL }}
+          state: "failure"
+          deployment-id: ${{ steps.deployment.outputs.deployment_id }}

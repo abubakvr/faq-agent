@@ -146,3 +146,12 @@ nbproject/
 
 # macOS
 .DS_Store
+
+# Chroma vector database (generated at runtime, can be recreated from CSV)
+chrome_langchain_db*/
+chrome_langchain_db_nithub/
+*.sqlite3
+*.sqlite3-journal
+
+# Old database directory (if exists)
+chrome_langchain_db/
