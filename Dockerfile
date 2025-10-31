@@ -4,7 +4,8 @@ FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    PIP_ROOT_USER_ACTION=ignore
 
 # Install runtime deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -16,7 +17,8 @@ WORKDIR /app
 
 # Copy only requirements first to leverage layer cache
 COPY requirements.txt ./
-RUN pip install --upgrade pip && pip install -r requirements.txt
+RUN pip install --upgrade pip && \
+    pip install -r requirements.txt
 
 # Copy app code
 COPY . .

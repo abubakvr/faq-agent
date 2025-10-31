@@ -5,6 +5,7 @@ from fastapi import FastAPI
 
 from database import init_db
 from migrate import run_migrations
+from vector import get_retriever
 from src.helpers.session_manager import periodic_cleanup
 from src.routes import qa_router, conversation_router, session_router
 from src.types.schemas import APIResponse, RootAPIResponse
@@ -23,7 +24,7 @@ app.include_router(session_router)
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize database and start background tasks on startup."""
+    """Initialize database, vector store, and start background tasks on startup."""
     try:
         # Run migrations first to ensure schema is up to date
         run_migrations()
@@ -34,6 +35,12 @@ async def startup_event():
     except Exception as e:
         print(f"Database initialization error: {e}")
         raise  # Re-raise to prevent starting with broken database
+    
+    # Initialize vector store in background (non-blocking)
+    # This loads the HuggingFace model and sets up ChromaDB
+    print("Starting vector store initialization in background...")
+    loop = asyncio.get_event_loop()
+    loop.run_in_executor(None, get_retriever)
     
     # Start background task for session cleanup
     asyncio.create_task(periodic_cleanup())
