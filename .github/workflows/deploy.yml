@@ -21,7 +21,23 @@ jobs:
 
       - name: Validate Docker Compose file
         run: |
+          # Create a temporary .env file with dummy values for validation
+          # (the real .env file will be on the VPS)
+          cat > .env << EOF
+          DB_HOST=localhost
+          DB_PORT=5432
+          DB_NAME=nitchatbot
+          DB_USER=nituser
+          DB_PASSWORD=dummy_password_for_validation
+          GOOGLE_API_KEY=dummy_key_for_validation
+          GEMINI_MODEL=gemini-2.5-flash
+          EOF
+
+          # Validate docker-compose.yml syntax
           docker compose config --quiet || exit 1
+
+          # Clean up temporary .env
+          rm -f .env
 
       # Optional: Build Docker image to validate (but we'll build on VPS during deploy)
       # - name: Build Docker image
@@ -64,7 +80,7 @@ jobs:
             set -e  # Exit on any error
 
             # Update project directory path as needed
-            PROJECT_DIR="/home/workspace/my-projects/nithub-chatbot"
+            PROJECT_DIR="/home/workspace/my-projects/faq-agent"
             cd "$PROJECT_DIR" || { echo "Error: Project directory not found: $PROJECT_DIR"; exit 1; }
 
             echo "=== Starting deployment ==="
