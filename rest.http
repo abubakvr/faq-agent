@@ -1,6 +1,20 @@
-POST http://localhost:8080/ask
+POST http://0.0.0.0:8080/ask
 Content-Type: application/json
 
 {
-    "question": "What are your opening hours?"
+    "question": "i want to register for frontend course 2025 "
 }
+
+
+###
+GET http://localhost:8080/conversations?limit=10&offset=0
+
+
+# Get first 10 conversations
+curl "http://localhost:8080/conversations?limit=10&offset=0"
+
+# Get next 10 conversations (pagination)
+curl "http://localhost:8080/conversations?limit=10&offset=10"
+
+# Get a specific conversation by ID
+curl "http://localhost:8080/conversations/1"

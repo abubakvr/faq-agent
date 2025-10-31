@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+
+# Venv
+venv/
+
+# Git
+.git/
+.gitignore
+
+# Editor/OS
+.vscode/
+.idea/
+.DS_Store
+
+# Data/Cache
+chrome_langchain_db/
+chrome_langchain_db_nithub/
+*.csv
+!nithub_question.csv
+*.json
+
+# Local env files (use env vars at runtime)
+.env

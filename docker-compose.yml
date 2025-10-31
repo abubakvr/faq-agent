@@ -1,0 +1,47 @@
+version: "3.9"
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: nitchatbot-postgres
+    ports:
+      - "5435:5432"
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_DB=${DB_NAME:-nitchatbot}
+      - POSTGRES_USER=${DB_USER:-nituser}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    image: nithub-chatbot-api:latest
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-nitchatbot}
+      - DB_USER=${DB_USER:-nituser}
+      - DB_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - chroma_data:/app/chrome_langchain_db_nithub
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  chroma_data:
+  postgres_data:

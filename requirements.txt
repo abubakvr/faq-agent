@@ -1,6 +1,13 @@
 langchain
-langchain-ollama
 langchain-chroma
+langchain-core
+langchain-huggingface
 fastapi
 pandas
 uvicorn
+google-generativeai
+python-dotenv
+sqlalchemy
+psycopg2-binary
+torch
+sentence-transformers
