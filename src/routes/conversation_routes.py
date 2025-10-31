@@ -3,14 +3,14 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from ..types.schemas import ConversationResponse, ConversationsListResponse
+from ..types.schemas import ConversationResponse, ConversationsListResponse, APIResponse, ConversationsAPIResponse, ConversationAPIResponse
 from database import get_db
 from ..controllers.conversation_controller import ConversationController
 
 router = APIRouter(tags=["Conversations"])
 
 
-@router.get("/conversations", response_model=ConversationsListResponse)
+@router.get("/conversations", response_model=ConversationsAPIResponse)
 async def get_conversations(
     limit: int = Query(default=50, ge=1, le=100, description="Maximum number of conversations to return"),
     offset: int = Query(default=0, ge=0, description="Number of conversations to skip"),
@@ -26,14 +26,30 @@ async def get_conversations(
     """
     controller = ConversationController(db)
     try:
-        return controller.get_conversations(limit, offset)
+        result = controller.get_conversations(limit, offset)
+        return APIResponse(
+            status=True,
+            code="00",
+            message="Response retrieved successfully",
+            data=result
+        )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        return APIResponse(
+            status=False,
+            code="01",
+            message=str(e),
+            data={}  # Empty dict for errors
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error retrieving conversations: {str(e)}")
+        return APIResponse(
+            status=False,
+            code="01",
+            message=f"Error retrieving conversations: {str(e)}",
+            data={}  # Empty dict for errors
+        )
 
 
-@router.get("/conversations/{conversation_id}", response_model=ConversationResponse)
+@router.get("/conversations/{conversation_id}", response_model=ConversationAPIResponse)
 async def get_conversation(
     conversation_id: int,
     db: Session = Depends(get_db)
@@ -43,9 +59,25 @@ async def get_conversation(
     """
     controller = ConversationController(db)
     try:
-        return controller.get_conversation(conversation_id)
+        result = controller.get_conversation(conversation_id)
+        return APIResponse(
+            status=True,
+            code="00",
+            message="Response retrieved successfully",
+            data=result
+        )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        return APIResponse(
+            status=False,
+            code="01",
+            message=str(e),
+            data={}  # Empty dict for errors
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error retrieving conversation: {str(e)}")
+        return APIResponse(
+            status=False,
+            code="01",
+            message=f"Error retrieving conversation: {str(e)}",
+            data={}  # Empty dict for errors
+        )
 

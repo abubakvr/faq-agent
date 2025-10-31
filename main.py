@@ -7,6 +7,7 @@ from database import init_db
 from migrate import run_migrations
 from src.helpers.session_manager import periodic_cleanup
 from src.routes import qa_router, conversation_router, session_router
+from src.types.schemas import APIResponse, RootAPIResponse
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -39,10 +40,15 @@ async def startup_event():
     print("Session cleanup task started")
 
 
-@app.get("/")
+@app.get("/", response_model=RootAPIResponse)
 async def root():
     """Root endpoint for health check."""
-    return {"message": "Nithub QA API is running!"}
+    return APIResponse(
+        status=True,
+        code="00",
+        message="Nithub QA API is running!",
+        data={"message": "Nithub QA API is running!"}
+    )
 
 
 if __name__ == "__main__":
