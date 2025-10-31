@@ -1,20 +1,34 @@
+### First question - no session_id (creates new session)
 POST http://0.0.0.0:8080/ask
 Content-Type: application/json
 
 {
-    "question": "i want to register for frontend course 2025 "
+    "question": "What is Nithub?"
 }
 
+### Follow-up question - with session_id from previous response
+POST http://0.0.0.0:8080/ask
+Content-Type: application/json
+
+{
+    "question": "Where is Nithub located?",
+    "session_id": "aB3xY9z2"
+}
+
+### User's own question - with session_id
+POST http://0.0.0.0:8080/ask
+Content-Type: application/json
+
+{
+    "question": "What training programs do you offer?",
+    "session_id": "aB3xY9z2"
+}
 
 ###
 GET http://localhost:8080/conversations?limit=10&offset=0
 
+### Get session info
+GET http://localhost:8080/session/aB3xY9z2
 
-# Get first 10 conversations
-curl "http://localhost:8080/conversations?limit=10&offset=0"
-
-# Get next 10 conversations (pagination)
-curl "http://localhost:8080/conversations?limit=10&offset=10"
-
-# Get a specific conversation by ID
-curl "http://localhost:8080/conversations/1"
+### Get a specific conversation by ID
+GET http://localhost:8080/conversations/1

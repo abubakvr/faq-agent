@@ -51,6 +51,8 @@ class Conversation(Base):
     id = Column(Integer, primary_key=True, index=True)
     question = Column(Text, nullable=False, index=True)
     answer = Column(Text, nullable=False)
+    follow_up_question = Column(Text, nullable=True)
+    previous_conversation_id = Column(Integer, nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
 
