@@ -115,10 +115,6 @@ jobs:
             echo "Cleaning up old API images..."
             docker image rm nithub-chatbot-api:latest 2>/dev/null || true
 
-            # Build new API image
-            echo "Building new API image..."
-            docker compose build --no-cache api || { echo "Error: Build failed"; exit 1; }
-
             # Start services (migrations run automatically on startup via main.py)
             echo "Starting services..."
             docker compose up -d || { echo "Error: Failed to start services"; exit 1; }

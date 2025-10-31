@@ -7,6 +7,32 @@ def upgrade(connection):
     """Add the new columns to the conversations table"""
     cursor = connection.cursor()
     try:
+        # Check if conversations table exists, create it if not
+        cursor.execute("""
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name = 'conversations'
+            )
+        """)
+        table_exists = cursor.fetchone()[0]
+        
+        if not table_exists:
+            print("  → Creating conversations table...")
+            cursor.execute("""
+                CREATE TABLE conversations (
+                    id SERIAL PRIMARY KEY,
+                    question TEXT NOT NULL,
+                    answer TEXT NOT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            # Create indexes (matching SQLAlchemy model)
+            cursor.execute("CREATE INDEX IF NOT EXISTS ix_conversations_id ON conversations(id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS ix_conversations_question ON conversations(question)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS ix_conversations_created_at ON conversations(created_at)")
+            print("  ✓ Created conversations table")
+        
         # Check if columns exist before adding
         cursor.execute("""
             SELECT column_name 
