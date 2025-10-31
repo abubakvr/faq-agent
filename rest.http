@@ -3,7 +3,7 @@ POST http://0.0.0.0:8080/ask
 Content-Type: application/json
 
 {
-    "question": "What is Nithub?"
+    "question": "My mummy told me to come here"
 }
 
 ### Follow-up question - with session_id from previous response
@@ -11,8 +11,8 @@ POST http://0.0.0.0:8080/ask
 Content-Type: application/json
 
 {
-    "question": "Where is Nithub located?",
-    "session_id": "aB3xY9z2"
+    "question": "Yes",
+    "session_id": "BtfBENvL"
 }
 
 ### User's own question - with session_id

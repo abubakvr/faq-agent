@@ -17,11 +17,12 @@ def extract_question_from_followup(follow_up_q: str) -> str:
     
     # Remove common prefixes
     prefixes_to_remove = [
-        "would you like to know ",
+        "would you like to know more about ",
         "would you like to know about ",
         "would you like to know the ",
         "would you like to know how to ",
         "would you like to know how ",
+        "would you like to know ",
         "would you like to ",
     ]
     
@@ -77,12 +78,70 @@ def extract_question_from_followup(follow_up_q: str) -> str:
                     # "how to sign up" -> "How do I sign up?"
                     action = remaining[7:]  # Remove "how to "
                     extracted_q = f"How do I {action}?"
-                elif remaining.lower().startswith("how "):
+                elif remaining.lower().startswith("how you can "):
+                    # "how you can visit us in person" -> "Can I visit Nithub in person?"
+                    action = remaining[12:].strip()  # Remove "how you can "
+                    # Fix pronouns - replace us/you with proper references
+                    action_lower = action.lower()
+                    if "visit" in action_lower:
+                        # "visit us in person" -> "visit Nithub in person"
+                        # Handle different patterns
+                        if "visit us in person" in action_lower:
+                            action = "visit Nithub in person"
+                        elif "visit you in person" in action_lower:
+                            action = "visit Nithub in person"
+                        elif action_lower.startswith("visit us"):
+                            action = action.replace("visit us", "visit Nithub")
+                        elif action_lower.startswith("visit you"):
+                            action = action.replace("visit you", "visit Nithub")
+                        elif action_lower.startswith("visit"):
+                            # "visit in person" -> "visit Nithub in person" 
+                            if "in person" in action_lower:
+                                action = "visit Nithub in person"
+                            else:
+                                action = action.replace("visit", "visit Nithub", 1)
+                        extracted_q = f"Can I {action}?"
+                    elif "contact" in action_lower or "reach" in action_lower:
+                        extracted_q = f"How can I contact Nithub?"
+                    elif "apply" in action_lower:
+                        extracted_q = f"How do I apply?"
+                    elif "sign up" in action_lower or "register" in action_lower:
+                        extracted_q = f"How do I sign up?"
+                    else:
+                        # Generic format - fix pronouns
+                        action = action.replace("us", "Nithub").replace("you", "I").replace("your", "your")
+                        extracted_q = f"How do I {action}?"
+                elif remaining.lower().startswith("how we "):
                     # "how we support" -> "How do you support startups?"
-                    extracted_q = f"How do you {remaining[4:]}?"
+                    action = remaining[6:].strip()
+                    extracted_q = f"How do you {action}?"
+                elif remaining.lower().startswith("how "):
+                    # "how to sign up" -> "How do I sign up?"
+                    action = remaining[4:].strip()
+                    if action.startswith("to "):
+                        action = action[3:]
+                    extracted_q = f"How do I {action}?"
+                elif remaining.lower().startswith("what our "):
+                    # "what our programs are" -> "What are our programs?"
+                    topic = remaining[9:].strip()
+                    if topic.endswith(" are"):
+                        topic = topic[:-4].strip()
+                    extracted_q = f"What are our {topic}?"
+                elif remaining.lower().startswith("what we "):
+                    # "what we offer" -> "What do you offer?"
+                    topic = remaining[7:].strip()
+                    extracted_q = f"What do you offer?"
                 else:
                     # Default: make it a "what is" or "tell me about" question
-                    extracted_q = f"What is {remaining}?" if not any(word in remaining.lower() for word in ["about", "are", "is"]) else f"Tell me {remaining}?"
+                    # Check if it's a natural phrase that needs conversion
+                    if " you can " in remaining.lower() or " you " in remaining.lower():
+                        # Convert "how you can visit" -> "Can I visit Nithub?"
+                        remaining = remaining.replace("you", "I").replace("us", "Nithub")
+                        if remaining.lower().startswith("how "):
+                            remaining = remaining[4:].strip()
+                        extracted_q = f"Can I {remaining}?"
+                    else:
+                        extracted_q = f"What is {remaining}?" if not any(word in remaining.lower() for word in ["about", "are", "is"]) else f"Tell me about {remaining}?"
             
             if not extracted_q.endswith("?"):
                 extracted_q += "?"
@@ -122,16 +181,37 @@ def extract_question_from_followup(follow_up_q: str) -> str:
                 elif topic.startswith("how to "):
                     topic = topic[7:]
                     extracted_q = f"How do I {topic}?"
-                elif topic.startswith("how "):
+                elif topic.startswith("how you can "):
+                    # "how you can visit us in person" -> "Can I visit Nithub in person?"
+                    action = topic[12:].strip()
+                    action = action.replace("us", "Nithub").replace("you", "I")
+                    extracted_q = f"Can I {action}?"
+                elif topic.startswith("how we "):
                     # "how we support" -> "How do you support startups?"
-                    topic = topic[4:]
-                    extracted_q = f"How do you {topic}?"
+                    action = topic[6:].strip()
+                    extracted_q = f"How do you {action}?"
+                elif topic.startswith("how "):
+                    # "how to sign up" -> "How do I sign up?"
+                    action = topic[4:].strip()
+                    if action.startswith("to "):
+                        action = action[3:]
+                    extracted_q = f"How do I {action}?"
                 elif topic.startswith("our "):
                     extracted_q = f"Tell me about our {topic[4:]}"
+                elif topic.startswith("what our "):
+                    # "what our programs are" -> "What are our programs?"
+                    subtopic = topic[8:].strip()
+                    if subtopic.endswith(" are"):
+                        subtopic = subtopic[:-4].strip()
+                    extracted_q = f"What are our {subtopic}?"
                 else:
                     # Check if it's already a question format
                     if any(word in topic.lower() for word in ["what", "how", "when", "where", "why", "who"]):
                         extracted_q = topic.capitalize() if not topic[0].isupper() else topic
+                    elif " you can " in topic.lower():
+                        # Handle "how you can visit" format
+                        action = topic.replace("how you can ", "").replace("us", "Nithub").replace("you", "I")
+                        extracted_q = f"Can I {action}?"
                     else:
                         extracted_q = f"Tell me about {topic}"
                 

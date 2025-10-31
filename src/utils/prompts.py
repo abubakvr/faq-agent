@@ -2,19 +2,22 @@
 
 
 def get_answer_prompt(context_block: str, question_text: str, previous_context: str = "", 
-                     is_related: bool = False) -> str:
+                     is_related: bool = False, recent_follow_ups: list = None) -> str:
     """
-    Build the prompt for generating an answer.
+    Build the prompt for generating an answer and follow-up question in JSON format.
     
     Args:
         context_block: Knowledge base context
         question_text: The user's question
         previous_context: Previous conversation context
         is_related: Whether this is a follow-up question
+        recent_follow_ups: List of recently suggested follow-up questions to avoid repetition
         
     Returns:
         Complete prompt string
     """
+    recent_follow_ups = recent_follow_ups or []
+    
     prompt_text = (
         "You are an expert assistant answering questions about Nithub (an innovation hub in Lagos).\n\n"
         "INSTRUCTIONS:\n"
@@ -36,10 +39,46 @@ def get_answer_prompt(context_block: str, question_text: str, previous_context: 
         else:
             prompt_text += "Use the previous conversation context to provide consistent information. The knowledge entries below should be used to answer the current question.\n\n"
     
+    # Extract available questions from context for follow-up selection
     prompt_text += (
         f"Knowledge entries from CSV:\n{context_block}\n\n"
         f"Question: {question_text}\n\n"
-        "Answer based on the knowledge entries above, using 'we' or 'our' when referring to Nithub:"
+    )
+    
+    if recent_follow_ups:
+        prompt_text += f"Recently suggested follow-up questions (avoid repeating these topics): {', '.join(recent_follow_ups[-3:])}\n\n"
+    
+    prompt_text += (
+        "TASK: Return a JSON object with two fields:\n"
+        "1. 'answer': Your answer to the question (maximum 300 words, use 'we' or 'our' when referring to Nithub)\n"
+        "2. 'follow_up_question': A follow-up question in invitation format starting with 'Would you like to know'\n\n"
+        "For the follow-up question:\n"
+        "- Select a question from the knowledge entries above (either related to the current topic OR a different interesting topic for variety)\n"
+        "- Extract the TOPIC or ACTION from the selected question, NOT the literal question text\n"
+        "- Convert it to a natural phrase like 'how you can visit', 'what our programs are', 'how to apply', etc.\n"
+        "- Use the format: 'Would you like to know more about [natural phrase]?'\n"
+        "- Do NOT include the original question text verbatim\n"
+        "- Use 'you' or 'we' appropriately (e.g., 'how you can visit', 'what we offer', 'how to join us')\n"
+        "- Be concise (one sentence ending with '?')\n"
+        "- Be natural and inviting\n"
+        "- Vary between related questions (60%) and random different topics (40%) for conversation variety\n"
+        "- Avoid topics from recently suggested follow-ups\n\n"
+        "Examples of good follow-up question conversions:\n"
+        "- Original: 'Can I visit Nithub in person?' → 'Would you like to know more about how you can visit us in person?'\n"
+        "- Original: 'What training programs do you offer?' → 'Would you like to know more about what training programs we offer?'\n"
+        "- Original: 'How do I apply?' → 'Would you like to know more about how to apply to our programs?'\n"
+        "- Original: 'What is Nithub?' → 'Would you like to know more about our programs?'\n"
+        "- Original: 'Where is Nithub located?' → 'Would you like to know more about how to visit us?'\n"
+        "- Original: 'Are internships paid?' → 'Would you like to know more about our internship opportunities?'\n\n"
+        "IMPORTANT:\n"
+        "- Convert the question to a natural phrase, don't use the literal question text\n"
+        "- Use proper capitalization (Nithub, not nithub)\n"
+        "- Return ONLY valid JSON, no other text\n"
+        "- Format:\n"
+        '{\n'
+        '  "answer": "your answer here",\n'
+        '  "follow_up_question": "Would you like to know more about how you can [action/topic]?"\n'
+        '}'
     )
     
     return prompt_text

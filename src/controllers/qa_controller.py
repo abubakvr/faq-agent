@@ -54,8 +54,9 @@ class QAController:
         if is_affirmative_response(question_text):
             if session_data.get("follow_up_question"):
                 follow_up_q = session_data["follow_up_question"]
-                print(f"User answered affirmatively ('{original_question}'). Extracting question from follow-up...")
+                print(f"User answered affirmatively ('{original_question}'). Extracting question from follow-up: {follow_up_q}")
                 question_text = extract_question_from_followup(follow_up_q)
+                print(f"Extracted question: {question_text}")
                 is_related = True
             elif session_data.get("previous_question"):
                 question_text = f"Tell me more about {session_data['previous_question']}"
@@ -94,24 +95,14 @@ class QAController:
                     session_data.get('follow_up_question')
                 )
         
-        # Generate answer (main task - LLM call)
-        answer = self.qa_service.generate_answer(
-            question_text, context_block, previous_context, is_related
-        )
-        
-        # Generate follow-up question (fast pattern-based, no LLM call)
+        # Generate answer and follow-up question in a single LLM call
         recent_follow_ups = session_data.get("recent_follow_ups", [])
-        previous_topics = self.followup_service.extract_topics_from_followups(recent_follow_ups)
-        use_random = random.random() < 0.4  # 40% random, 60% related
-        
-        selected_question = self.followup_service.select_question_from_csv(
-            question_text, previous_topics, use_random
+        result = self.qa_service.generate_answer_with_followup(
+            question_text, context_block, previous_context, is_related, recent_follow_ups
         )
         
-        follow_up_question = None
-        if selected_question:
-            # Use fast pattern-based generation (no LLM call, instant)
-            follow_up_question = self.followup_service.generate_followup(selected_question, use_fast=True)
+        answer = result["answer"]
+        follow_up_question = result["follow_up_question"]
         
         # Save to database
         conversation = self.repo.create(
