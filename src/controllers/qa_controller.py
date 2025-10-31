@@ -94,11 +94,12 @@ class QAController:
                     session_data.get('follow_up_question')
                 )
         
+        # Generate answer (main task - LLM call)
         answer = self.qa_service.generate_answer(
             question_text, context_block, previous_context, is_related
         )
         
-        # Generate follow-up question
+        # Generate follow-up question (fast pattern-based, no LLM call)
         recent_follow_ups = session_data.get("recent_follow_ups", [])
         previous_topics = self.followup_service.extract_topics_from_followups(recent_follow_ups)
         use_random = random.random() < 0.4  # 40% random, 60% related
@@ -109,7 +110,8 @@ class QAController:
         
         follow_up_question = None
         if selected_question:
-            follow_up_question = self.followup_service.generate_followup(selected_question)
+            # Use fast pattern-based generation (no LLM call, instant)
+            follow_up_question = self.followup_service.generate_followup(selected_question, use_fast=True)
         
         # Save to database
         conversation = self.repo.create(

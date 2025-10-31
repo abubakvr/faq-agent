@@ -24,6 +24,7 @@ def get_answer_prompt(context_block: str, question_text: str, previous_context: 
         "- If the question asks about location/where, use any location information from the entries.\n"
         "- If the question asks 'why', provide relevant context from the entries that explains the reason.\n"
         "- Answer in a natural, helpful way based on the provided knowledge entries.\n"
+        "- IMPORTANT: Keep your answer concise. Maximum 300 words. Be direct and informative without unnecessary elaboration.\n"
         "- If the question cannot be answered from the provided entries at all, then respond with: 'I don't have that information in my knowledge base. Please contact Nithub directly for this information.'\n\n"
     )
     

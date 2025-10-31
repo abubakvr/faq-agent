@@ -174,9 +174,9 @@ class FollowupService:
         return selected_question
     
     @staticmethod
-    def generate_followup(selected_question: str) -> Optional[str]:
+    def generate_followup_fast(selected_question: str) -> Optional[str]:
         """
-        Generate a follow-up question in invitation format.
+        Generate a follow-up question using fast pattern matching (no LLM call).
         
         Args:
             selected_question: The question to convert to follow-up format
@@ -184,6 +184,106 @@ class FollowupService:
         Returns:
             Follow-up question string or None if generation fails
         """
+        q_lower = selected_question.lower().strip("?.")
+        
+        # Pattern-based conversion (fast, no LLM)
+        if "what is" in q_lower or "what are" in q_lower:
+            # Extract topic after "what is/are"
+            if "what is " in q_lower:
+                topic = q_lower.split("what is ", 1)[1].strip()
+            elif "what are " in q_lower:
+                topic = q_lower.split("what are ", 1)[1].strip()
+            else:
+                topic = q_lower.replace("what is", "").replace("what are", "").strip()
+            
+            # Clean topic
+            topic = topic.replace("nithub", "").replace("our", "").strip()
+            
+            if "program" in topic or "programs" in topic:
+                return "Would you like to know about our programs?"
+            elif "location" in topic or "where" in topic or "located" in topic:
+                return "Would you like to know how to visit us?"
+            elif "training" in topic or "course" in topic:
+                return "Would you like to know about our training programs?"
+            elif "incubation" in topic or "startup" in topic:
+                return "Would you like to know the benefits of joining our incubation team?"
+            elif "event" in topic or "events" in topic:
+                return "Would you like to know about our events?"
+            else:
+                return f"Would you like to know more about {topic}?"
+        
+        elif "tell me about" in q_lower or "tell me" in q_lower:
+            if "tell me about " in q_lower:
+                topic = q_lower.split("tell me about ", 1)[1].strip()
+            else:
+                topic = q_lower.replace("tell me", "").strip()
+            
+            if "program" in topic:
+                return "Would you like to know about our programs?"
+            elif "incubation" in topic or "startup" in topic:
+                return "Would you like to know the benefits of joining our incubation team?"
+            else:
+                return f"Would you like to know more about {topic}?"
+        
+        elif "how" in q_lower:
+            if "how to" in q_lower:
+                action = q_lower.split("how to", 1)[1].strip()
+                if "sign up" in action or "register" in action or "join" in action:
+                    return "Would you like to know how to sign up to our programs?"
+                elif "contact" in action or "reach" in action:
+                    return "Would you like to know how to contact us?"
+                else:
+                    return f"Would you like to know how to {action}?"
+            else:
+                return "Would you like to know how we can help you?"
+        
+        elif "where" in q_lower:
+            return "Would you like to know how to visit us?"
+        
+        elif "who" in q_lower:
+            if "research" in q_lower:
+                return "Would you like to know about our research team?"
+            elif "team" in q_lower:
+                return "Would you like to know about our team?"
+            else:
+                return "Would you like to know about our team?"
+        
+        elif "when" in q_lower:
+            return "Would you like to know about our programs?"
+        
+        # Default pattern
+        if q_lower.startswith("are "):
+            topic = q_lower.replace("are ", "").strip()
+            if "internships" in topic and "paid" in topic:
+                return "Would you like to know about our internship opportunities?"
+            return f"Would you like to know about {topic}?"
+        
+        # Generic fallback
+        if len(q_lower.split()) <= 10:  # Short questions
+            return f"Would you like to know more about {selected_question.lower()}?"
+        
+        return f"Would you like to know about our programs?"
+    
+    @staticmethod
+    def generate_followup(selected_question: str, use_fast: bool = True) -> Optional[str]:
+        """
+        Generate a follow-up question in invitation format.
+        
+        Args:
+            selected_question: The question to convert to follow-up format
+            use_fast: Use fast pattern matching instead of LLM (default: True for speed)
+            
+        Returns:
+            Follow-up question string or None if generation fails
+        """
+        # Use fast pattern-based generation by default (much faster)
+        if use_fast:
+            follow_up_question = FollowupService.generate_followup_fast(selected_question)
+            if follow_up_question:
+                print(f"Generated follow-up question (fast): {follow_up_question} (based on: {selected_question})")
+                return follow_up_question
+        
+        # Fallback to LLM if fast method didn't work (rarely needed)
         try:
             follow_up_prompt = get_followup_prompt(selected_question)
             gemini_model = _get_gemini_model()
@@ -210,11 +310,10 @@ class FollowupService:
             if not follow_up_question.endswith("?"):
                 follow_up_question = follow_up_question.rstrip(".") + "?"
             
-            print(f"Generated follow-up question from CSV: {follow_up_question} (based on: {selected_question})")
+            print(f"Generated follow-up question from LLM: {follow_up_question} (based on: {selected_question})")
             return follow_up_question
         except Exception as e:
             print(f"Error generating follow-up question: {e}")
-            import traceback
-            traceback.print_exc()
-            return None
+            # Fallback to fast method if LLM fails
+            return FollowupService.generate_followup_fast(selected_question)
 

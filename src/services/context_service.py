@@ -1,14 +1,7 @@
 """Service for managing conversation context and relation checking."""
 
-from typing import Optional, Tuple
-from ..utils.config import get_gemini_model
-from ..utils.prompts import get_relation_check_prompt
+from typing import Optional
 from ..helpers.session_manager import get_session_storage
-
-
-def _get_gemini_model():
-    """Lazy initialization of Gemini model."""
-    return get_gemini_model()
 
 
 class ContextService:
@@ -19,6 +12,7 @@ class ContextService:
                                 current_question: str, previous_followup: Optional[str] = None) -> bool:
         """
         Check if the current question is related to the previous conversation.
+        Uses fast keyword-based matching instead of LLM to improve response time.
         
         Args:
             previous_question: The previous question
@@ -29,18 +23,50 @@ class ContextService:
         Returns:
             True if questions are related, False otherwise
         """
-        try:
-            prompt = get_relation_check_prompt(
-                previous_question, previous_answer, current_question, previous_followup
-            )
-            gemini_model = _get_gemini_model()
-            relation_response = gemini_model.generate_content(prompt)
-            relation_text = getattr(relation_response, "text", "").strip().upper()
-            return "YES" in relation_text
-        except Exception as e:
-            print(f"Error checking question relation: {e}")
-            # On error, assume related to be safe
+        # Fast keyword-based relation check (no LLM call)
+        prev_lower = previous_question.lower()
+        curr_lower = current_question.lower()
+        prev_answer_lower = previous_answer.lower()
+        
+        # Extract meaningful keywords (longer than 3 chars, not common words)
+        stop_words = {"the", "what", "where", "when", "how", "why", "who", "is", "are", "do", "does", "can", "will", "would", "like", "to", "know", "about", "our", "you", "your", "we", "us"}
+        
+        def extract_keywords(text: str) -> set:
+            words = text.lower().split()
+            return {w for w in words if len(w) > 3 and w not in stop_words}
+        
+        prev_keywords = extract_keywords(prev_lower)
+        curr_keywords = extract_keywords(curr_lower)
+        answer_keywords = extract_keywords(prev_answer_lower)
+        
+        # Check for keyword overlap
+        overlap_with_question = len(prev_keywords & curr_keywords)
+        overlap_with_answer = len(answer_keywords & curr_keywords)
+        
+        # Check for pronouns/references that indicate relation
+        reference_words = ["it", "they", "them", "this", "that", "these", "those", "here", "there"]
+        has_reference = any(ref in curr_lower for ref in reference_words)
+        
+        # Check if current question contains words from previous
+        shared_significant_words = prev_keywords & curr_keywords
+        if len(shared_significant_words) >= 1:
             return True
+        
+        # Check if referencing previous topic
+        if has_reference and len(curr_keywords) < 5:  # Short questions with references are likely related
+            return True
+        
+        # Check if overlapping with answer keywords
+        if overlap_with_answer >= 2:
+            return True
+        
+        # Check for common question patterns that indicate follow-up
+        follow_up_patterns = ["more", "also", "and", "another", "other", "else", "what about", "how about"]
+        if any(pattern in curr_lower for pattern in follow_up_patterns):
+            return True
+        
+        # Default: assume not related for speed (can be overridden if needed)
+        return False
     
     @staticmethod
     def build_context(previous_question: str, previous_answer: str, 

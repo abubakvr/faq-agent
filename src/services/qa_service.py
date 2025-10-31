@@ -80,5 +80,15 @@ class QAService:
         # Normalize whitespace to avoid \n in responses
         cleaned_answer = " ".join(result_text.split())
         
+        # Enforce 300 word maximum limit
+        words = cleaned_answer.split()
+        if len(words) > 300:
+            cleaned_answer = " ".join(words[:300])
+            # Ensure sentence ends properly (remove incomplete last sentence if needed)
+            if cleaned_answer and not cleaned_answer[-1] in ".!?":
+                last_period = cleaned_answer.rfind(".")
+                if last_period > len(cleaned_answer) * 0.8:  # Only truncate if period is in last 20%
+                    cleaned_answer = cleaned_answer[:last_period + 1]
+        
         return cleaned_answer
 
