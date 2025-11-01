@@ -2,6 +2,7 @@
 
 import asyncio
 from fastapi import FastAPI, status
+from fastapi.middleware.cors import CORSMiddleware
 
 from database import init_db
 from migrate import run_migrations
@@ -14,6 +15,15 @@ from src.types.schemas import APIResponse, RootAPIResponse
 app = FastAPI(
     title="Nithub QA API",
     description="API to answer questions about Nithub using a curated Q&A knowledge base.",
+)
+
+# Configure CORS to allow all origins
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins
+    allow_credentials=False,  # Cannot be True when allow_origins=["*"]
+    allow_methods=["*"],  # Allow all HTTP methods (GET, POST, PUT, DELETE, etc.)
+    allow_headers=["*"],  # Allow all headers
 )
 
 # Register routes
