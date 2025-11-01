@@ -37,7 +37,7 @@ async def startup_event():
         raise  # Re-raise to prevent starting with broken database
     
     # Initialize vector store in background (non-blocking)
-    # This loads the HuggingFace model and sets up ChromaDB
+    # This initializes Gemini embeddings and sets up ChromaDB
     print("Starting vector store initialization in background...")
     loop = asyncio.get_event_loop()
     loop.run_in_executor(None, get_retriever)

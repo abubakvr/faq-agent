@@ -111,9 +111,10 @@ jobs:
             echo "Stopping existing containers..."
             docker compose down --timeout 30 || true
 
-            # Remove old API image to force rebuild (keeps postgres image)
-            echo "Cleaning up old API images..."
-            docker image rm nithub-chatbot-api:latest 2>/dev/null || true
+            # Build new API image with BuildKit for better caching
+            # BuildKit cache mounts persist between builds even if image is removed
+            echo "Building new API image with BuildKit caching..."
+            DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker compose build api || { echo "Error: Build failed"; exit 1; }
 
             # Start services (migrations run automatically on startup via main.py)
             echo "Starting services..."

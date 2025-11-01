@@ -1,9 +1,9 @@
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
-from langchain_huggingface import HuggingFaceEmbeddings
 import os
 import pandas as pd
 from dotenv import load_dotenv, find_dotenv
+from src.utils.gemini_embeddings import GeminiDirectEmbeddings
 
 import threading
 
@@ -48,15 +48,19 @@ def _initialize_vector_store():
         else:
             load_dotenv()
 
-        # Initialize HuggingFace embeddings (free, no API key needed)
-        # Using a lightweight model that works well for semantic search
-        print("Loading HuggingFace embeddings model...")
-        _embeddings = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/all-MiniLM-L6-v2",
-            model_kwargs={'device': 'cpu'},  # Use CPU in Docker
-            encode_kwargs={'normalize_embeddings': True}
+        # Initialize Gemini embeddings using direct API endpoint
+        # This bypasses the batch API which has stricter quota limits
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            raise RuntimeError("GOOGLE_API_KEY is required for Gemini embeddings. Please set it in .env file.")
+        
+        print("Initializing Gemini embeddings (direct API endpoint)...")
+        _embeddings = GeminiDirectEmbeddings(
+            api_key=api_key,
+            model="models/text-embedding-004",  # Use text-embedding-004 for better quality
+            rate_limit_delay=0.15  # 150ms delay between requests to avoid rate limits
         )
-        print("Embeddings model loaded.")
+        print("Gemini embeddings initialized.")
 
         # Read CSV file
         print("Reading CSV file...")
@@ -65,12 +69,42 @@ def _initialize_vector_store():
         db_location = "./chrome_langchain_db_nithub"
 
         # Create vector store
+        # Note: If switching embedding models, the database will be automatically deleted
+        # if dimension mismatch is detected
         print("Initializing Chroma vector store...")
-        _vector_store = Chroma(
-            collection_name="nithub_qa",
-            persist_directory=db_location,
-            embedding_function=_embeddings
-        )
+        
+        import shutil
+        import pathlib
+        
+        # Try to create/open the vector store
+        try:
+            _vector_store = Chroma(
+                collection_name="nithub_qa",
+                persist_directory=db_location,
+                embedding_function=_embeddings
+            )
+            # Test that the store works by getting collection count
+            # This will raise an error if dimensions don't match
+            _ = _vector_store._collection.count()
+        except Exception as e:
+            error_msg = str(e)
+            # Check if it's a dimension mismatch error
+            if "dimension" in error_msg.lower() or "384" in error_msg or "768" in error_msg:
+                print(f"⚠️  Dimension mismatch detected: {error_msg}")
+                print(f"🗑️  Deleting old database to recreate with correct dimensions...")
+                db_path = pathlib.Path(db_location)
+                if db_path.exists():
+                    shutil.rmtree(db_location)
+                    print(f"✓ Database deleted. Recreating with new embedding dimensions.")
+                # Now create a fresh database
+                _vector_store = Chroma(
+                    collection_name="nithub_qa",
+                    persist_directory=db_location,
+                    embedding_function=_embeddings
+                )
+            else:
+                # Different error, re-raise it
+                raise
 
         # Check if collection is empty and add documents if needed
         collection_count = _vector_store._collection.count()
@@ -130,9 +164,42 @@ class RetrieverProxy:
     
     def invoke(self, *args, **kwargs):
         """Invoke the retriever with the given arguments."""
+        global _initialized, _vector_store, _retriever
+        
         if not _initialized:
             _initialize_vector_store()
-        return _retriever.invoke(*args, **kwargs)
+        
+        try:
+            return _retriever.invoke(*args, **kwargs)
+        except Exception as e:
+            error_msg = str(e)
+            # Check if it's a dimension mismatch error during query
+            if "dimension" in error_msg.lower() or "384" in error_msg or "768" in error_msg:
+                print(f"⚠️  Dimension mismatch detected during query: {error_msg}")
+                print(f"🗑️  Resetting database and reinitializing...")
+                
+                # Reset initialization state
+                _initialized = False
+                _vector_store = None
+                _retriever = None
+                
+                # Delete the database
+                import shutil
+                import pathlib
+                db_location = "./chrome_langchain_db_nithub"
+                db_path = pathlib.Path(db_location)
+                if db_path.exists():
+                    shutil.rmtree(db_location)
+                    print(f"✓ Database deleted. Reinitializing with correct dimensions...")
+                
+                # Reinitialize
+                _initialize_vector_store()
+                
+                # Retry the query
+                return _retriever.invoke(*args, **kwargs)
+            else:
+                # Different error, re-raise it
+                raise
 
 
 # Create proxy instance for backward compatibility
