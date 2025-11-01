@@ -87,7 +87,7 @@ pip install -r requirements.txt
 #### Run Locally
 
 ```bash
-python -m uvicorn main:app --reload --port 8080
+python -m uvicorn src.main:app --reload --port 8080
 ```
 
 The API will be available at `http://localhost:8080`

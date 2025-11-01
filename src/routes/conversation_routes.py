@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from ..types.schemas import ConversationResponse, ConversationsListResponse, APIResponse, ConversationsAPIResponse, ConversationAPIResponse
-from database import get_db
+from ..config.database import get_db
 from ..controllers.conversation_controller import ConversationController
 
 router = APIRouter(tags=["Conversations"])

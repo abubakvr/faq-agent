@@ -47,18 +47,24 @@ def get_gemini_model():
 _csv_df = None
 
 
-def get_csv_dataframe(csv_path: str = "nithub_question.csv") -> pd.DataFrame:
+def get_csv_dataframe(csv_path: str = None) -> pd.DataFrame:
     """
     Load CSV file as pandas DataFrame (singleton pattern).
     
     Args:
-        csv_path: Path to the CSV file
+        csv_path: Path to the CSV file (defaults to src/data/nithub_question.csv)
         
     Returns:
         DataFrame containing the CSV data
     """
     global _csv_df
     if _csv_df is None:
+        if csv_path is None:
+            # Default to src/data/nithub_question.csv relative to project root
+            import pathlib
+            # Get the project root (parent of src)
+            project_root = pathlib.Path(__file__).parent.parent.parent
+            csv_path = project_root / "src" / "data" / "nithub_question.csv"
         _csv_df = pd.read_csv(csv_path)
     return _csv_df
 

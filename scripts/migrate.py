@@ -97,7 +97,8 @@ def load_migration_module(migration_file):
 
 def run_migrations():
     """Run all pending migrations"""
-    migrations_dir = Path(__file__).parent / "migrations"
+    # Get migrations directory relative to project root (parent of scripts)
+    migrations_dir = Path(__file__).parent.parent / "migrations"
     
     if not migrations_dir.exists():
         print("Migrations directory not found, skipping migrations")

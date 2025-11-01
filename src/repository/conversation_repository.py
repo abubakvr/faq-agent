@@ -5,7 +5,7 @@ from sqlalchemy import desc
 from typing import List, Optional
 from datetime import datetime
 
-from database import Conversation  # This is at root level
+from ..config.database import Conversation
 
 
 class ConversationRepository:

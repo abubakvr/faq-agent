@@ -4,9 +4,9 @@ import asyncio
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 
-from database import init_db
-from migrate import run_migrations
-from vector import get_retriever
+from src.config.database import init_db
+from scripts.migrate import run_migrations
+from src.vector import get_retriever
 from src.helpers.session_manager import periodic_cleanup
 from src.routes import qa_router, conversation_router, session_router
 from src.types.schemas import APIResponse, RootAPIResponse

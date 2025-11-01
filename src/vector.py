@@ -3,7 +3,7 @@ from langchain_core.documents import Document
 import os
 import pandas as pd
 from dotenv import load_dotenv, find_dotenv
-from src.utils.gemini_embeddings import GeminiDirectEmbeddings
+from .utils.gemini_embeddings import GeminiDirectEmbeddings
 
 import threading
 
@@ -64,7 +64,11 @@ def _initialize_vector_store():
 
         # Read CSV file
         print("Reading CSV file...")
-        df = pd.read_csv("nithub_question.csv")
+        # Get the project root (parent of src)
+        import pathlib
+        project_root = pathlib.Path(__file__).parent.parent
+        csv_path = project_root / "src" / "data" / "nithub_question.csv"
+        df = pd.read_csv(csv_path)
 
         db_location = "./chrome_langchain_db_nithub"
 

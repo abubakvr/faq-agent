@@ -3,7 +3,7 @@
 import random
 from typing import Optional
 import pandas as pd
-from vector import retriever
+from ..vector import retriever
 from ..utils.config import get_gemini_model, get_csv_dataframe
 from ..utils.prompts import get_followup_prompt
 

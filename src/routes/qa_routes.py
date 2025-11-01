@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from ..types.schemas import AskRequest, AskResponse, APIResponse, AskAPIResponse
-from database import get_db
+from ..config.database import get_db
 from ..controllers.qa_controller import QAController
 
 router = APIRouter(tags=["QA"])

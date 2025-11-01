@@ -63,5 +63,5 @@ EXPOSE 8080
 # Default envs can be overridden at runtime
 ENV GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
 
-# Start server
-CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+# Start server (main.py is now at src/main.py)
+CMD ["python", "-m", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8080"]

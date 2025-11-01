@@ -3,7 +3,7 @@
 import json
 import re
 from typing import Optional, Tuple, Dict
-from vector import retriever
+from ..vector import retriever
 from ..utils.config import get_gemini_model
 from ..utils.prompts import get_answer_prompt
 

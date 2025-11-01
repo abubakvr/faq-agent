@@ -134,7 +134,7 @@ To test the refactored code:
 python main.py
 
 # Or with uvicorn
-uvicorn main:app --host 0.0.0.0 --port 8080
+uvicorn src.main:app --host 0.0.0.0 --port 8080
 ```
 
 All endpoints should work exactly as before:

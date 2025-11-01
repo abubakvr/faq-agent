@@ -27,8 +27,9 @@ Thumbs.db
 chrome_langchain_db/
 chrome_langchain_db_nithub/
 *.csv
-!nithub_question.csv
+!src/data/nithub_question.csv
 *.json
+!src/data/nithub_question.json
 *.log
 logs/
 
