@@ -1,28 +1,53 @@
-# Python
+# Python cache and compiled files
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 *.sqlite3
 
-# Venv
+# Virtual environments
 venv/
+.env/
+.env.*
+.venv/
+ENV/
+env/
 
 # Git
 .git/
 .gitignore
 
-# Editor/OS
+# Editor / OS
 .vscode/
 .idea/
 .DS_Store
+Thumbs.db
 
-# Data/Cache
+# Data / Cache
 chrome_langchain_db/
 chrome_langchain_db_nithub/
 *.csv
 !nithub_question.csv
 *.json
+*.log
+logs/
 
-# Local env files (use env vars at runtime)
-.env
+# Build and dependency caches
+*.egg-info/
+build/
+dist/
+pip-wheel-metadata/
+__pypackages__/
+.cache/
+node_modules/
+
+# Docker-related
+Dockerfile
+docker-compose.yml
+
+# Documentation / tests
+*.md
+tests/
+notebooks/
+examples/
+docs/

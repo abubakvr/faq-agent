@@ -1,7 +1,7 @@
 """Main FastAPI application entry point."""
 
 import asyncio
-from fastapi import FastAPI
+from fastapi import FastAPI, status
 
 from database import init_db
 from migrate import run_migrations
@@ -47,7 +47,7 @@ async def startup_event():
     print("Session cleanup task started")
 
 
-@app.get("/", response_model=RootAPIResponse)
+@app.get("/", response_model=RootAPIResponse, status_code=status.HTTP_200_OK)
 async def root():
     """Root endpoint for health check."""
     return APIResponse(

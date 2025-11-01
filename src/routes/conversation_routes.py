@@ -1,6 +1,7 @@
 """Routes for conversation endpoints."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from ..types.schemas import ConversationResponse, ConversationsListResponse, APIResponse, ConversationsAPIResponse, ConversationAPIResponse
@@ -10,7 +11,7 @@ from ..controllers.conversation_controller import ConversationController
 router = APIRouter(tags=["Conversations"])
 
 
-@router.get("/conversations", response_model=ConversationsAPIResponse)
+@router.get("/conversations", response_model=ConversationsAPIResponse, status_code=status.HTTP_200_OK)
 async def get_conversations(
     limit: int = Query(default=50, ge=1, le=100, description="Maximum number of conversations to return"),
     offset: int = Query(default=0, ge=0, description="Number of conversations to skip"),
@@ -34,22 +35,28 @@ async def get_conversations(
             data=result
         )
     except ValueError as e:
-        return APIResponse(
-            status=False,
-            code="01",
-            message=str(e),
-            data={}  # Empty dict for errors
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content=APIResponse(
+                status=False,
+                code="01",
+                message=str(e),
+                data={}
+            ).model_dump()
         )
     except Exception as e:
-        return APIResponse(
-            status=False,
-            code="01",
-            message=f"Error retrieving conversations: {str(e)}",
-            data={}  # Empty dict for errors
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=APIResponse(
+                status=False,
+                code="01",
+                message=f"Error retrieving conversations: {str(e)}",
+                data={}
+            ).model_dump()
         )
 
 
-@router.get("/conversations/{conversation_id}", response_model=ConversationAPIResponse)
+@router.get("/conversations/{conversation_id}", response_model=ConversationAPIResponse, status_code=status.HTTP_200_OK)
 async def get_conversation(
     conversation_id: int,
     db: Session = Depends(get_db)
@@ -67,17 +74,35 @@ async def get_conversation(
             data=result
         )
     except ValueError as e:
-        return APIResponse(
-            status=False,
-            code="01",
-            message=str(e),
-            data={}  # Empty dict for errors
+        # Check if it's a "not found" type error
+        error_msg = str(e).lower()
+        if "not found" in error_msg or "does not exist" in error_msg:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content=APIResponse(
+                    status=False,
+                    code="01",
+                    message=str(e),
+                    data={}
+                ).model_dump()
+            )
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content=APIResponse(
+                status=False,
+                code="01",
+                message=str(e),
+                data={}
+            ).model_dump()
         )
     except Exception as e:
-        return APIResponse(
-            status=False,
-            code="01",
-            message=f"Error retrieving conversation: {str(e)}",
-            data={}  # Empty dict for errors
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=APIResponse(
+                status=False,
+                code="01",
+                message=f"Error retrieving conversation: {str(e)}",
+                data={}
+            ).model_dump()
         )
 
