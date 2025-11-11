@@ -113,8 +113,11 @@ jobs:
 
             # Build new API image with BuildKit for better caching
             # BuildKit cache mounts persist between builds even if image is removed
+            # Set longer timeout for dependency resolution (20 minutes)
             echo "Building new API image with BuildKit caching..."
-            DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker compose build api || { echo "Error: Build failed"; exit 1; }
+            export DOCKER_BUILDKIT=1
+            export COMPOSE_DOCKER_CLI_BUILD=1
+            timeout 1200 docker compose build api || { echo "Error: Build failed or timed out"; exit 1; }
 
             # Start services (migrations run automatically on startup via main.py)
             echo "Starting services..."

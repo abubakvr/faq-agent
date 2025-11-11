@@ -1,13 +1,27 @@
-langchain>=0.3.0
-langchain-chroma>=0.1.0
-langchain-core>=0.3.0
-langchain-google-genai>=2.0.0
-requests>=2.31.0
-pydantic>=2.0.0
-fastapi>=0.104.0
-pandas>=2.0.0
-uvicorn>=0.24.0
-google-generativeai>=0.3.0
-python-dotenv>=1.0.0
-sqlalchemy>=2.0.0
-psycopg2-binary>=2.9.0
+# ChromaDB - install first to avoid dependency conflicts
+chromadb>=0.4.0,<0.7.0
+
+# Core LangChain packages - using latest stable versions
+langchain>=0.3.0,<0.4.0
+langchain-chroma>=0.1.2,<0.2.0
+langchain-core>=0.3.0,<0.4.0
+langchain-google-genai>=2.0.0,<3.0.0
+
+# Web framework
+fastapi>=0.115.0,<0.116.0
+uvicorn[standard]>=0.32.0,<0.33.0
+pydantic>=2.9.0,<3.0.0
+
+# Database
+sqlalchemy>=2.0.36,<3.0.0
+psycopg2-binary>=2.9.10,<3.0.0
+
+# Data processing
+pandas>=2.2.3,<3.0.0
+
+# Google AI
+google-generativeai>=0.8.3,<1.0.0
+
+# Utilities
+requests>=2.32.3,<3.0.0
+python-dotenv>=1.0.1,<2.0.0

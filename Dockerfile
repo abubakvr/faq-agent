@@ -28,7 +28,7 @@ COPY requirements.txt ./
 # --prefer-binary: Use pre-built wheels instead of compiling from source (much faster)
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --upgrade pip setuptools wheel && \
-    pip install --upgrade --prefer-binary -r requirements.txt
+    pip install --prefer-binary -r requirements.txt
 
 # Final stage - minimal runtime image
 FROM python:3.11-slim

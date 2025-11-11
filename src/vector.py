@@ -81,6 +81,7 @@ def _initialize_vector_store():
         import pathlib
         
         # Try to create/open the vector store
+        _vector_store = None
         try:
             _vector_store = Chroma(
                 collection_name="nithub_qa",
@@ -88,18 +89,101 @@ def _initialize_vector_store():
                 embedding_function=_embeddings
             )
             # Test that the store works by getting collection count
-            # This will raise an error if dimensions don't match
+            # This will raise an error if dimensions don't match or database is corrupted
             _ = _vector_store._collection.count()
-        except Exception as e:
+        except (KeyError, Exception) as e:
             error_msg = str(e)
+            error_type = type(e).__name__
+            
             # Check if it's a dimension mismatch error
-            if "dimension" in error_msg.lower() or "384" in error_msg or "768" in error_msg:
-                print(f"⚠️  Dimension mismatch detected: {error_msg}")
-                print(f"🗑️  Deleting old database to recreate with correct dimensions...")
+            is_dimension_error = "dimension" in error_msg.lower() or "384" in error_msg or "768" in error_msg
+            
+            # Check if it's a database corruption error (missing _type field in ChromaDB config)
+            is_corruption_error = (
+                error_type == "KeyError" and "_type" in error_msg
+            ) or (
+                "configuration" in error_msg.lower() and "_type" in error_msg
+            ) or (
+                "from_json" in error_msg.lower() and "_type" in error_msg
+            )
+            
+            if is_dimension_error or is_corruption_error:
+                if is_corruption_error:
+                    print(f"⚠️  Database corruption detected (KeyError: '_type'): {error_msg}")
+                    print(f"🗑️  Deleting corrupted database to recreate...")
+                else:
+                    print(f"⚠️  Dimension mismatch detected: {error_msg}")
+                    print(f"🗑️  Deleting old database to recreate with correct dimensions...")
+                
+                # Close ChromaDB connection if it was partially created
+                if _vector_store is not None:
+                    try:
+                        # Try to properly close ChromaDB connections
+                        if hasattr(_vector_store, '_client') and _vector_store._client:
+                            try:
+                                # ChromaDB client cleanup
+                                if hasattr(_vector_store._client, '_admin_client'):
+                                    _vector_store._client._admin_client = None
+                                if hasattr(_vector_store._client, '_server'):
+                                    _vector_store._client._server = None
+                            except:
+                                pass
+                            _vector_store._client = None
+                        if hasattr(_vector_store, '_chroma_collection'):
+                            _vector_store._chroma_collection = None
+                    except:
+                        pass
+                    _vector_store = None
+                
+                # Force garbage collection to release file handles
+                import gc
+                gc.collect()
+                
+                # Wait a moment for file handles to release
+                import time
+                time.sleep(1)
+                
+                # Delete the database with retry logic
                 db_path = pathlib.Path(db_location)
                 if db_path.exists():
-                    shutil.rmtree(db_location)
-                    print(f"✓ Database deleted. Recreating with new embedding dimensions.")
+                    max_retries = 5
+                    deleted = False
+                    for attempt in range(max_retries):
+                        try:
+                            # Try to remove files individually first (more reliable)
+                            if db_path.is_dir():
+                                # Remove contents first
+                                for item in db_path.iterdir():
+                                    if item.is_dir():
+                                        shutil.rmtree(item, ignore_errors=True)
+                                    else:
+                                        try:
+                                            item.unlink()
+                                        except:
+                                            pass
+                                # Then remove the directory
+                                db_path.rmdir()
+                            shutil.rmtree(db_location, ignore_errors=True)
+                            print(f"✓ Database deleted. Recreating with fresh database.")
+                            deleted = True
+                            break
+                        except (OSError, PermissionError) as delete_error:
+                            if attempt < max_retries - 1:
+                                wait_time = (attempt + 1) * 0.5
+                                print(f"⚠️  Database locked, retrying in {wait_time} seconds... (attempt {attempt + 1}/{max_retries})")
+                                time.sleep(wait_time)
+                            else:
+                                print(f"⚠️  Could not delete database (still locked after {max_retries} attempts).")
+                                print(f"⚠️  Please manually delete the volume: docker volume rm faq-agent_chroma_data")
+                                print(f"⚠️  Or restart the container to release file locks.")
+                                # Use a timestamped location as fallback
+                                import datetime
+                                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                                db_location = f"./chrome_langchain_db_nithub_{timestamp}"
+                                print(f"Using new database location: {db_location}")
+                                deleted = True  # Mark as handled
+                                break
+                
                 # Now create a fresh database
                 _vector_store = Chroma(
                     collection_name="nithub_qa",
@@ -175,11 +259,27 @@ class RetrieverProxy:
         
         try:
             return _retriever.invoke(*args, **kwargs)
-        except Exception as e:
+        except (KeyError, Exception) as e:
             error_msg = str(e)
+            error_type = type(e).__name__
+            
             # Check if it's a dimension mismatch error during query
-            if "dimension" in error_msg.lower() or "384" in error_msg or "768" in error_msg:
-                print(f"⚠️  Dimension mismatch detected during query: {error_msg}")
+            is_dimension_error = "dimension" in error_msg.lower() or "384" in error_msg or "768" in error_msg
+            
+            # Check if it's a database corruption error
+            is_corruption_error = (
+                error_type == "KeyError" and "_type" in error_msg
+            ) or (
+                "configuration" in error_msg.lower() and "_type" in error_msg
+            ) or (
+                "from_json" in error_msg.lower() and "_type" in error_msg
+            )
+            
+            if is_dimension_error or is_corruption_error:
+                if is_corruption_error:
+                    print(f"⚠️  Database corruption detected during query (KeyError: '_type'): {error_msg}")
+                else:
+                    print(f"⚠️  Dimension mismatch detected during query: {error_msg}")
                 print(f"🗑️  Resetting database and reinitializing...")
                 
                 # Reset initialization state
@@ -194,7 +294,7 @@ class RetrieverProxy:
                 db_path = pathlib.Path(db_location)
                 if db_path.exists():
                     shutil.rmtree(db_location)
-                    print(f"✓ Database deleted. Reinitializing with correct dimensions...")
+                    print(f"✓ Database deleted. Reinitializing with fresh database...")
                 
                 # Reinitialize
                 _initialize_vector_store()
