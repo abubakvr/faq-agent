@@ -129,6 +129,18 @@ class QAService:
         if not answer:
             answer = "I don't have that information in my knowledge base. Please contact Nithub directly for this information."
         
+        # Remove "Yes" or "Yes," from the beginning of the answer
+        # This handles cases where the LLM includes affirmative responses
+        answer_lower = answer.lower()
+        if answer_lower.startswith("yes,"):
+            answer = answer[4:].strip()  # Remove "Yes," and leading space
+        elif answer_lower.startswith("yes "):
+            answer = answer[4:].strip()  # Remove "Yes " and leading space
+        elif answer_lower.startswith("yes"):
+            # Only remove if it's a standalone "yes" followed by punctuation or space
+            if len(answer) > 3 and (answer[3] in [',', '.', ' ', '!', '?']):
+                answer = answer[3:].strip()
+        
         # Normalize whitespace
         answer = " ".join(answer.split())
         
