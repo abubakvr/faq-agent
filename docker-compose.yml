@@ -1,24 +1,4 @@
 services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: nitchatbot-postgres
-    ports:
-      - "5435:5432"
-    env_file:
-      - .env
-    environment:
-      - POSTGRES_DB=${DB_NAME:-nitchatbot}
-      - POSTGRES_USER=${DB_USER:-nituser}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   api:
     build: .
     image: nithub-chatbot-api:latest
@@ -42,4 +22,3 @@ services:
 
 volumes:
   chroma_data:
-  postgres_data:
