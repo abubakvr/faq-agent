@@ -123,8 +123,22 @@ jobs:
             echo "Starting services..."
             docker compose up -d || { echo "Error: Failed to start services"; exit 1; }
 
-            # Skip postgres health check - using external database
-            echo "Using external PostgreSQL database (skipping health check)"
+            # Wait for postgres to be healthy
+            echo "Waiting for PostgreSQL to be healthy..."
+            MAX_WAIT=60
+            WAIT_COUNT=0
+            while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
+              if docker compose ps postgres | grep -q "healthy"; then
+                echo "PostgreSQL is healthy!"
+                break
+              fi
+              sleep 2
+              WAIT_COUNT=$((WAIT_COUNT + 2))
+            done
+
+            if [ $WAIT_COUNT -ge $MAX_WAIT ]; then
+              echo "Warning: PostgreSQL did not become healthy within $MAX_WAIT seconds"
+            fi
 
             # Wait for API to be ready
             echo "Waiting for API to be ready..."

@@ -1,6 +1,10 @@
+# Disable ChromaDB telemetry to avoid warnings
+import os
+os.environ["ANONYMIZED_TELEMETRY"] = "False"
+os.environ["CHROMA_TELEMETRY_DISABLED"] = "True"
+
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
-import os
 import pandas as pd
 from dotenv import load_dotenv, find_dotenv
 from .utils.gemini_embeddings import GeminiDirectEmbeddings

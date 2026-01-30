@@ -12,7 +12,6 @@ Content-Type: application/json
 
 {
     "question": "Yes",
-    "session_id": "TQqdqlNs"
 }
 
 ### First question - no session_id (creates new session)

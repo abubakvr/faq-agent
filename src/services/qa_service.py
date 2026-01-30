@@ -80,6 +80,16 @@ class QAService:
             gemini_response = gemini_model.generate_content(prompt_text)
         except Exception as e:
             model_name = "gemini-2.5-flash"  # Default
+            error_msg = str(e)
+            
+            # Provide more helpful error messages for network issues
+            if "Failed to resolve" in error_msg or "NameResolutionError" in error_msg or "Temporary failure in name resolution" in error_msg:
+                raise RuntimeError(
+                    f"Network connectivity issue: Cannot reach Gemini API. "
+                    f"This indicates a DNS or network problem on the server. "
+                    f"Please check server internet connectivity and DNS configuration. "
+                    f"Original error: {e}"
+                )
             raise RuntimeError(f"Gemini API error using model '{model_name}': {e}")
         
         result_text = getattr(gemini_response, "text", "") or str(gemini_response)
