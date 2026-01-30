@@ -29,16 +29,15 @@ services:
     environment:
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
-      - DB_HOST=postgres
-      - DB_PORT=5432
+      - DB_HOST=host.docker.internal
+      - DB_PORT=5435
       - DB_NAME=${DB_NAME:-nitchatbot}
       - DB_USER=${DB_USER:-nituser}
       - DB_PASSWORD=${DB_PASSWORD}
+      - ANONYMIZED_TELEMETRY=False
+      - CHROMA_TELEMETRY_DISABLED=True
     volumes:
       - chroma_data:/app/chrome_langchain_db_nithub
-    depends_on:
-      postgres:
-        condition: service_healthy
     restart: unless-stopped
 
 volumes:
